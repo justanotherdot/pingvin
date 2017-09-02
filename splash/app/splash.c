@@ -118,6 +118,17 @@ int main(int argc, char** argv, char** envp) {
   // TODO Handle configuration options
   // TODO do simple expansions.
   // TODO Make tokens a resizable array.
+  // TODO handle environment variables with execve.
+
+  // Print environment vars for debugging purposes.
+  if (envp) {
+    char* evar = *envp;
+    do {
+      printf("%s\n", evar);
+      envp++, evar = *envp;
+    } while (evar != NULL);
+  }
+
   Config* cfg = setup(argc, argv);
   run(cfg);
   teardown(cfg);
