@@ -9,19 +9,97 @@
  *
  */
 
+// TODO check all mallocs and follow check and re-assign pattern
+// as opposed to realloc.
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
+#define MAX_TOKENS 256
 
 typedef struct config {
   void* empty;
 } Config;
 
-// TODO This could take a configuration object.
+typedef struct line_buf {
+  char* line;
+  size_t size;
+} LineBuf;
+
+typedef struct parse_result {
+  char** tokens;
+  size_t qty;
+} ParseResult;
+
+LineBuf* read_line(FILE* handle) {
+  char* line = NULL;
+  size_t bufsize = 0;
+
+  getline(&line, &bufsize, handle);
+
+  LineBuf* lb = malloc(sizeof(LineBuf));
+  lb->line = line;
+  lb->size = bufsize;
+
+  return lb;
+}
+
+// TODO this will need to become a more sophisticated parser in order to do
+// standard shell stuff.
+ParseResult*  parse_line(LineBuf* lb, char* delim) {
+  char* token;
+  char* rest;
+  char** tokens = malloc(sizeof(char*) * MAX_TOKENS);
+  int qty = 0;
+
+  token = strtok_r(lb->line, delim, &rest);
+  while (token != NULL) {
+    tokens[qty] = token, ++qty;
+    token = strtok_r(NULL, delim, &rest);
+  }
+  tokens[qty] = NULL;
+
+  ParseResult* pr = malloc(sizeof(ParseResult));
+  pr->tokens = tokens;
+  pr->qty = qty;
+
+  return pr;
+}
+
+int spawn_process(Config* cfg, ParseResult* pr) {
+  pid_t pid, wpid;
+  int status;
+
+  pid = fork();
+  if (pid == 0) {
+    // TODO swap this out with execve to pass environment.
+    if (execvp(pr->tokens[0], pr->tokens) == -1) {
+      perror("splash");
+    }
+    exit(EXIT_FAILURE);
+    /* perror("splash"); */
+
+  } else if (pid < 0) {
+    perror("splash");
+  } else {
+    // TODO, see https://www.cons.org/cracauer/sigint.html
+    do {
+      wpid = waitpid(pid, &status, WUNTRACED);
+    } while (!WIFEXITED(status) && !WTERMSIG(status) && !WIFSIGNALED(status));
+  }
+
+  return 1;
+}
+
 void run(Config* cfg) {
-  // Get the input line.
-  // Parse the input line.
-  // Execute the program specified.
+  LineBuf* lb = read_line(stdin);
+  ParseResult* pr = parse_line(lb, " \t\r\n\a");
+  spawn_process(cfg, pr);
+
+  free(lb);
+  free(pr);
 }
 
 Config* setup(int argc, char** argv) {
@@ -34,9 +112,9 @@ void teardown(Config* cfg) {
 }
 
 // main :: Int -> Ptr String -> IO ()
-int main(int argc, char** argv) {
+int main(int argc, char** argv, char** envp) {
   Config* cfg = setup(argc, argv);
   run(cfg);
-  /* teardown(cfg); */
+  teardown(cfg);
   return EXIT_SUCCESS;
 }
