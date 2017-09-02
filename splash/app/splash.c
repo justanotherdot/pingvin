@@ -96,6 +96,7 @@ int spawn_process(Config* cfg, ParseResult* pr) {
 void run(Config* cfg) {
   LineBuf* lb = read_line(stdin);
   ParseResult* pr = parse_line(lb, " \t\r\n\a");
+  // TODO provide builtins.
   spawn_process(cfg, pr);
 
   free(lb);
@@ -111,8 +112,12 @@ void teardown(Config* cfg) {
   free(cfg);
 }
 
-// main :: Int -> Ptr String -> IO ()
 int main(int argc, char** argv, char** envp) {
+  // TODO check that all memory is freed properly.
+  // TODO make parser type better named. Actually parse to a proper data type.
+  // TODO Handle configuration options
+  // TODO do simple expansions.
+  // TODO Make tokens a resizable array.
   Config* cfg = setup(argc, argv);
   run(cfg);
   teardown(cfg);
